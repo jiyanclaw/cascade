@@ -1,7 +1,6 @@
 import Foundation
 import Cocoa
 import SwiftUI
-import Metal
 
 // Main entry point
 @main
@@ -21,7 +20,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var cpuMonitor: CPUMonitor?
     var overlayWindow: OverlayWindow?
     var overlayView: OverlayView?
-    var gpuMonitor: GPUMonitor?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         print("🚀 Cascade starting...")
@@ -43,12 +41,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Start CPU monitoring
         cpuMonitor = CPUMonitor()
         cpuMonitor?.onUpdate = { [weak self] cpu, memory in
-            let gpuName = self?.gpuMonitor?.getGPUName() ?? "Unknown"
             DispatchQueue.main.async {
-                self?.overlayView?.updateMetrics(cpu: cpu, memory: memory, gpu: gpuName)
+                self?.overlayView?.updateMetrics(cpu: cpu, memory: memory)
             }
         }
-        gpuMonitor = GPUMonitor()
         cpuMonitor?.startMonitoring()
         
         print("✅ Cascade running with overlay!")
@@ -66,29 +62,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 // MARK: - CPU Monitor
-// MARK: - GPU Monitor
-class GPUMonitor {
-    private var device: MTLDevice?
-    private var commandQueue: MTLCommandQueue?
-    
-    init() {
-        device = MTLCreateSystemDefaultDevice()
-        commandQueue = device?.makeCommandQueue()
-    }
-    
-    func getGPUName() -> String {
-        return device?.name ?? "Unknown"
-    }
-    
-    // Note: Metal doesnt provide direct GPU utilization API
-    // This is a simplified version - real implementation would need IOKit
-    func getGPUUsage() -> Double {
-        // Placeholder: Metal API doesnt expose utilization directly
-        // Would need IOKit IOAccelerator for real GPU usage
-        return 0.0
-    }
-}
-
 class CPUMonitor {
     private var timer: Timer?
     private var previousCPUInfo: (user: UInt64, system: UInt64, idle: UInt64, nice: UInt64)?
@@ -205,7 +178,7 @@ class CPUMonitor {
 class OverlayWindow: NSWindow {
     init() {
         super.init(
-            contentRect: NSRect(x: 100, y: 100, width: 300, height: 200),
+            contentRect: NSRect(x: 100, y: 100, width: 300, height: 180),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -235,7 +208,6 @@ class OverlayWindow: NSWindow {
 class OverlayView: NSView {
     var cpuUsage: Double = 0.0
     var memoryUsage: String = "0 GB"
-    var gpuName: String = "Unknown"
     
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
@@ -278,10 +250,6 @@ class OverlayView: NSView {
         "RAM".draw(at: NSPoint(x: 20, y: bounds.height - 90), withAttributes: labelAttrs)
         memoryUsage.draw(at: NSPoint(x: 70, y: bounds.height - 90), withAttributes: labelAttrs)
         
-        // GPU
-        "GPU".draw(at: NSPoint(x: 20, y: bounds.height - 120), withAttributes: labelAttrs)
-        gpuName.draw(at: NSPoint(x: 70, y: bounds.height - 120), withAttributes: labelAttrs)
-        
         // Border glow
         greenColor.withAlphaComponent(0.6).setStroke()
         let border = NSBezierPath(rect: bounds.insetBy(dx: 1, dy: 1))
@@ -289,8 +257,7 @@ class OverlayView: NSView {
         border.stroke()
     }
     
-    func updateMetrics(cpu: Double, memory: String, gpu: String) {
-        self.gpuName = gpu
+    func updateMetrics(cpu: Double, memory: String) {
         self.cpuUsage = cpu
         self.memoryUsage = memory
         self.needsDisplay = true
