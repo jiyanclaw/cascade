@@ -237,57 +237,86 @@ class OverlayView: NSView {
     var memoryUsage: String = "0 GB"
     var gpuName: String = "Unknown"
     
-    override func draw(_ dirtyRect: NSRect) {
-        super.draw(dirtyRect)
-        
-        // Background
-        NSColor.black.withAlphaComponent(0.85).setFill()
-        NSBezierPath(rect: bounds).fill()
-        
-        // Matrix green color
-        let greenColor = NSColor(red: 0, green: 1.0, blue: 0.25, alpha: 1.0)
-        
-        // Title
-        let titleAttrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.monospacedSystemFont(ofSize: 16, weight: .bold),
-            .foregroundColor: greenColor
-        ]
-        "CASCADE".draw(at: NSPoint(x: 20, y: bounds.height - 30), withAttributes: titleAttrs)
-        
-        let labelAttrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular),
-            .foregroundColor: greenColor
-        ]
-        
-        // CPU
-        "CPU".draw(at: NSPoint(x: 20, y: bounds.height - 60), withAttributes: labelAttrs)
-        
-        // CPU bar background
-        NSColor.white.withAlphaComponent(0.2).setFill()
-        NSBezierPath(rect: NSRect(x: 70, y: bounds.height - 63, width: 150, height: 10)).fill()
-        
-        // CPU bar fill
+// Improved draw method for OverlayView
+override func draw(_ dirtyRect: NSRect) {
+    super.draw(dirtyRect)
+    
+    // Background with rounded corners
+    let background = NSBezierPath(roundedRect: bounds, xRadius: 8, yRadius: 8)
+    NSColor.black.withAlphaComponent(0.9).setFill()
+    background.fill()
+    
+    // Matrix green color
+    let greenColor = NSColor(red: 0, green: 1.0, blue: 0.25, alpha: 1.0)
+    let shadowGreen = NSShadow()
+    shadowGreen.shadowColor = greenColor.withAlphaComponent(0.6)
+    shadowGreen.shadowOffset = NSSize(width: 0, height: 0)
+    shadowGreen.shadowBlurRadius = 6
+    
+    // Title with glow
+    let titleAttrs: [NSAttributedString.Key: Any] = [
+        .font: NSFont.monospacedSystemFont(ofSize: 18, weight: .bold),
+        .foregroundColor: greenColor,
+        .shadow: shadowGreen
+    ]
+    let titleStr = NSAttributedString(string: "CASCADE", attributes: titleAttrs)
+    titleStr.draw(at: NSPoint(x: (bounds.width - titleStr.size().width) / 2, y: bounds.height - 35))
+    
+    let labelAttrs: [NSAttributedString.Key: Any] = [
+        .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .medium),
+        .foregroundColor: greenColor
+    ]
+    
+    let valueAttrs: [NSAttributedString.Key: Any] = [
+        .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular),
+        .foregroundColor: greenColor.withAlphaComponent(0.8)
+    ]
+    
+    // Metrics starting position
+    var yPos = bounds.height - 65
+    
+    // CPU Section
+    "CPU".draw(at: NSPoint(x: 15, y: yPos), withAttributes: labelAttrs)
+    
+    // CPU bar with rounded corners
+    let cpuBarBg = NSBezierPath(roundedRect: NSRect(x: 60, y: yPos + 2, width: 170, height: 10), xRadius: 5, yRadius: 5)
+    NSColor.white.withAlphaComponent(0.15).setFill()
+    cpuBarBg.fill()
+    
+    let cpuProgress = CGFloat(cpuUsage / 100.0) * 170
+    if cpuProgress > 0 {
+        let cpuBarFill = NSBezierPath(roundedRect: NSRect(x: 60, y: yPos + 2, width: cpuProgress, height: 10), xRadius: 5, yRadius: 5)
         greenColor.setFill()
-        let cpuProgress = CGFloat(cpuUsage / 100.0) * 150
-        NSBezierPath(rect: NSRect(x: 70, y: bounds.height - 63, width: cpuProgress, height: 10)).fill()
-        
-        // CPU percentage
-        String(format: "%.0f%%", cpuUsage).draw(at: NSPoint(x: 230, y: bounds.height - 60), withAttributes: labelAttrs)
-        
-        // RAM
-        "RAM".draw(at: NSPoint(x: 20, y: bounds.height - 90), withAttributes: labelAttrs)
-        memoryUsage.draw(at: NSPoint(x: 70, y: bounds.height - 90), withAttributes: labelAttrs)
-        
-        // GPU
-        "GPU".draw(at: NSPoint(x: 20, y: bounds.height - 120), withAttributes: labelAttrs)
-        gpuName.draw(at: NSPoint(x: 70, y: bounds.height - 120), withAttributes: labelAttrs)
-        
-        // Border glow
-        greenColor.withAlphaComponent(0.6).setStroke()
-        let border = NSBezierPath(rect: bounds.insetBy(dx: 1, dy: 1))
-        border.lineWidth = 2
-        border.stroke()
+        cpuBarFill.fill()
     }
+    
+    String(format: "%.0f%%", cpuUsage).draw(at: NSPoint(x: 240, y: yPos), withAttributes: valueAttrs)
+    
+    yPos -= 25
+    
+    // RAM Section
+    "RAM".draw(at: NSPoint(x: 15, y: yPos), withAttributes: labelAttrs)
+    memoryUsage.draw(at: NSPoint(x: 60, y: yPos), withAttributes: valueAttrs)
+    
+    yPos -= 25
+    
+    // GPU Section
+    "GPU".draw(at: NSPoint(x: 15, y: yPos), withAttributes: labelAttrs)
+    let gpuShort = gpuName.replacingOccurrences(of: "Apple ", with: "")
+    gpuShort.draw(at: NSPoint(x: 60, y: yPos), withAttributes: valueAttrs)
+    
+    // Glowing border
+    greenColor.withAlphaComponent(0.5).setStroke()
+    let border = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 8, yRadius: 8)
+    border.lineWidth = 2
+    border.stroke()
+    
+    // Inner subtle glow
+    greenColor.withAlphaComponent(0.2).setStroke()
+    let innerBorder = NSBezierPath(roundedRect: bounds.insetBy(dx: 4, dy: 4), xRadius: 6, yRadius: 6)
+    innerBorder.lineWidth = 1
+    innerBorder.stroke()
+}
     
     func updateMetrics(cpu: Double, memory: String, gpu: String) {
         self.gpuName = gpu
